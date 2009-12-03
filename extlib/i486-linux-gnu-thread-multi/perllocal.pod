@@ -1,0 +1,22 @@
+=head2 Thu Dec  3 12:37:44 2009: C<Module> L<Text::MicroTemplate::Extended|Text::MicroTemplate::Extended>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/KkCmY1vctk/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.06>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
