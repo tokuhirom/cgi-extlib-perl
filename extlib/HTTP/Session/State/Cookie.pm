@@ -1,6 +1,7 @@
 package HTTP::Session::State::Cookie;
 use HTTP::Session::State::Base;
 use Carp ();
+use Scalar::Util ();
 
 our $COOKIE_CLASS = 'CGI::Cookie';
 
@@ -32,7 +33,10 @@ sub new {
 sub get_session_id {
     my ($self, $req) = @_;
 
-    my %jar    = _cookie_class()->parse($ENV{HTTP_COOKIE} || $req->header('Cookie'));
+    my $cookie_header = $ENV{HTTP_COOKIE} || (Scalar::Util::blessed($req) ? $req->header('Cookie') : $req->{HTTP_COOKIE});
+    return unless $cookie_header;
+
+    my %jar    = _cookie_class()->parse($cookie_header);
     my $cookie = $jar{$self->name};
     return $cookie ? $cookie->value : undef;
 }
@@ -60,7 +64,13 @@ sub header_filter {
             %options;
         }->()
     );
-    $res->header( 'Set-Cookie' => $cookie->as_string );
+    if (Scalar::Util::blessed($res)) {
+        $res->header( 'Set-Cookie' => $cookie->as_string );
+        $res;
+    } else {
+        push @{$res->[1]}, 'Set-Cookie' => $cookie->as_string;
+        $res;
+    }
 }
 
 1;
