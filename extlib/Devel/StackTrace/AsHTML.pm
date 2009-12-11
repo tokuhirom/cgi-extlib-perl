@@ -2,7 +2,7 @@ package Devel::StackTrace::AsHTML;
 
 use strict;
 use 5.008_001;
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Data::Dumper;
 use Devel::StackTrace;
@@ -34,13 +34,21 @@ sub render {
 a.toggle { color: #444 }
 body { margin: 0; padding: 0; background: #fff; color: #000; }
 h1 { margin: 0 0 .5em; padding: .25em .5em .1em 1.5em; border-bottom: thick solid #002; background: #444; color: #eee; font-size: x-large; }
-p.head { margin: .5em 1em; }
-li { font-size: small; }
+p.message { margin: .5em 1em; }
+li.frame { font-size: small; margin-top: 3em }
+li.frame:nth-child(1) { margin-top: 0 }
 pre.context { border: 1px solid #aaa; padding: 0.2em 0; background: #fff; color: #444; font-size: medium; }
 pre .match { color: #000;background-color: #f99; font-weight: bold }
 pre.vardump { margin:0 }
 pre code strong { color: #000; background: #f88; }
-.lexicals { display: none }
+
+table.lexicals, table.arguments { border-collapse: collapse }
+table.lexicals td, table.arguments td { border: 1px solid #000; margin: 0; padding: .3em }
+table.lexicals tr:nth-child(2n) { background: #DDDDFF }
+table.arguments tr:nth-child(2n) { background: #DDFFDD }
+.lexicals, .arguments { display: none }
+.variable, .value { font-family: monospace; white-space: pre }
+td.variable { vertical-align: top }
 STYLE
 
     if (ref $opt{style}) {
@@ -51,14 +59,25 @@ STYLE
 
     $out .= <<HEAD;
 <script language="JavaScript" type="text/javascript">
-function showLexicals(id) {
- var css = document.getElementById(id).style;
- css.display = css.display == 'block' ? 'none' : 'block'
+function toggleThing(ref, type, hideMsg, showMsg) {
+ var css = document.getElementById(type+'-'+ref).style;
+ css.display = css.display == 'block' ? 'none' : 'block';
+
+ var hyperlink = document.getElementById('toggle-'+ref);
+ hyperlink.textContent = css.display == 'block' ? hideMsg : showMsg;
+}
+
+function toggleArguments(ref) {
+ toggleThing(ref, 'arguments', 'Hide function arguments', 'Show function arguments');
+}
+
+function toggleLexicals(ref) {
+ toggleThing(ref, 'lexicals', 'Hide lexical variables', 'Show lexical variables');
 }
 </script>
 </head>
 <body>
-<h1>Error trace</h1><p class="head">$msg</p><ol>
+<h1>Error trace</h1><p class="message">$msg</p><ol>
 HEAD
 
     $trace->next_frame; # ignore the head
@@ -67,7 +86,7 @@ HEAD
         $i++;
         $out .= join(
             '',
-            '<li>',
+            '<li class="frame">',
             $frame->subroutine ? encode_html("in " . $frame->subroutine) : '',
             ' at ',
             $frame->filename ? encode_html($frame->filename) : '',
@@ -76,41 +95,73 @@ HEAD
             q(<pre class="context"><code>),
             _build_context($frame) || '',
             q(</code></pre>),
-            $frame->can('lexicals') ? _build_lexicals($frame->lexicals, $i) : '',
+            _build_arguments($i, [$frame->args]),
+            $frame->can('lexicals') ? _build_lexicals($i, $frame->lexicals) : '',
             q(</li>),
         );
     }
     $out .= qq{</ol>};
+
+    $out .= qq{<p class="message">Install <a target="_blank" href="http://search.cpan.org/perldoc?Devel::StackTrace::WithLexicals">Devel::StackTrace::WithLexicals</a> to see the lexical variables of each frame.</p>}
+        unless $trace->frame(0)->can('lexicals');
+
     $out .= "</body></html>";
 
     $out;
 }
 
-sub _build_lexicals {
-    my($lexicals, $ref) = @_;
+my $dumper = sub {
+    my $value = shift;
+    $value = $$value if ref $value eq 'SCALAR' or ref $value eq 'REF';
+    my $d = Data::Dumper->new([ $value ]);
+    $d->Indent(1)->Terse(1)->Deparse(1);
+    chomp(my $dump = $d->Dump);
+    $dump;
+};
 
+sub _build_arguments {
+    my($id, $args) = @_;
+    my $ref = "arg-$id";
+
+    return '' unless @$args;
+
+    my $html = qq(<p><a class="toggle" id="toggle-$ref" href="javascript:toggleArguments('$ref')">Show function arguments</a></p><table class="arguments" id="arguments-$ref">);
+
+    # Don't use while each since Dumper confuses that
+    for my $idx (0 .. @$args - 1) {
+        my $value = $args->[$idx];
+        my $dump = $dumper->($value);
+        $html .= qq{<tr>};
+        $html .= qq{<td class="variable">\$_[$idx]</td>};
+        $html .= qq{<td class="value">} . encode_html($dump) . qq{</td>};
+        $html .= qq{</tr>};
+    }
+    $html .= qq(</table>);
+
+    return $html;
+}
+
+sub _build_lexicals {
+    my($id, $lexicals) = @_;
+    my $ref = "lex-$id";
+
+    warn $ref;
     return '' unless keys %$lexicals;
 
-    my $html = qq(<p><a class="toggle" href="javascript:showLexicals('lexicals-$ref')">Show lexical variables</a></p><pre class="lexicals" id="lexicals-$ref">);
-
-    my $dumper = sub {
-        my $d = Data::Dumper->new([ @_ ]);
-        $d->Indent(1)->Terse(1)->Deparse(1);
-        chomp(my $dump = $d->Dump);
-        $dump;
-    };
+    my $html = qq(<p><a class="toggle" id="toggle-$ref" href="javascript:toggleLexicals('$ref')">Show lexical variables</a></p><table class="lexicals" id="lexicals-$ref">);
 
     # Don't use while each since Dumper confuses that
     for my $var (sort keys %$lexicals) {
         my $value = $lexicals->{$var};
-        $value = $$value if ref $value eq 'SCALAR' or ref $value eq 'REF';
         my $dump = $dumper->($value);
         $dump =~ s/^\{(.*)\}$/($1)/s if $var =~ /^\%/;
         $dump =~ s/^\[(.*)\]$/($1)/s if $var =~ /^\@/;
-        $html .= "my " . encode_html($var)  . " = " . encode_html($dump) . ";\n";
+        $html .= qq{<tr>};
+        $html .= qq{<td class="variable">} . encode_html($var)  . qq{</td>};
+        $html .= qq{<td class="value">}    . encode_html($dump) . qq{</td>};
+        $html .= qq{</tr>};
     }
-
-    $html .= qq(</pre>);
+    $html .= qq(</table>);
 
     return $html;
 }
@@ -165,14 +216,17 @@ Devel::StackTrace::AsHTML - Displays stack trace in HTML
 
 =head1 DESCRIPTION
 
-Devel::StackTrace::AsHTML adds C<as_html> method to
-L<Devel::StackTrace> which displays the stack trace in a beautiful
-HTML, with code snippet context and even lexical variables, if you
-call it on L<Devel::StackTrace::WithLexicals>.
+Devel::StackTrace::AsHTML adds C<as_html> method to L<Devel::StackTrace> which
+displays the stack trace in beautiful HTML, with code snippet context and
+function parameters. If you call it on an instance of
+L<Devel::StackTrace::WithLexicals>, you even get to see the lexical variables
+of each stack frame.
 
 =head1 AUTHOR
 
 Tatsuhiko Miyagawa E<lt>miyagawa@bulknews.netE<gt>
+
+Shawn M Moore
 
 HTML generation code is ripped off from L<CGI::ExceptionManager> written by Tokuhiro Matsuno and Kazuho Oku.
 

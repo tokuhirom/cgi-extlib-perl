@@ -1,11 +1,11 @@
-# Copyrights 1999,2001-2008 by Mark Overmeer.
+# Copyrights 1999,2001-2009 by Mark Overmeer.
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.04.
+# Pod stripped from pm file by OODoc 1.06.
 
 package MIME::Types;
 use vars '$VERSION';
-$VERSION = '1.24';
+$VERSION = '1.28';
 
 
 use strict;
@@ -170,6 +170,8 @@ sub by_mediatype($)
 {   my $type = shift;
     my @found;
 
+    %list or init {};
+
     if(index($type, '/') >= 0)
     {   my $simplified = MIME::Type->simplified($type);
         my $mime = $list{$simplified};
@@ -242,6 +244,7 @@ application/index.vnd
 application/iotp
 application/ipp
 application/isup
+application/json		json				8bit
 application/javascript		js				8bit
 application/mac-binhex40	hqx				8bit
 application/macwriteii
@@ -254,7 +257,7 @@ application/ocsp-request	orq
 application/ocsp-response	ors
 application/octet-stream bin,dms,lha,lzh,exe,class,ani,pgp,so,dll,dmg	base64
 application/oda			oda
-application/ogg			ogg
+application/ogg			ogx
 application/parityfec
 application/pdf			pdf				base64
 application/pgp-encrypted					7bit
@@ -458,14 +461,21 @@ application/vnd.mozilla.xul+xml	xul
 application/vnd.ms-artgalry	cil
 application/vnd.ms-asf		asf
 application/vnd.mseq		mseq
+application/vnd.ms-excel.sheet.binary.macroEnabled.12 xlsb
+application/vnd.ms-excel.sheet.macroEnabled.12 xlsm
 application/vnd.ms-excel	xls,xlt			base64
 application/vnd.msign
 application/vnd.ms-lrm		lrm
 application/vnd.ms-powerpoint	ppt,pps,pot		base64
+application/vnd.ms-powerpoint.presentation.macroEnabled.12 pptm
+application/vnd.ms-powerpoint.slideshow.macroEnabled.12 ppsm
 application/vnd.ms-project	mpp			base64
 application/vnd.ms-tnef					base64
+application/vnd.ms-word.document.macroEnabled.12 docm
+application/vnd.ms-word.template.macroEnabled.12 dotm
 application/vnd.ms-works				base64
 application/vnd.ms-wpl		wpl			base64
+application/vnd.ms-xpsdocument	xps			8bit
 application/vnd.musician
 application/vnd.music-niff
 application/vnd.nervana		ent,entity,req,request,bkm,kcm
@@ -494,6 +504,10 @@ application/vnd.oasis.opendocument.database		odb
 application/vnd.oasis.opendocument.image		odi
 application/vnd.obn
 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet xlsx quoted-printable
+application/vnd.openxmlformats-officedocument.wordprocessingml.template dotx
+application/vnd.openxmlformats-officedocument.presentationml.slideshow ppsx
+application/vnd.openxmlformats-officedocument.presentationml.presentation pptx
+application/vnd.openxmlformats-officedocument.wordprocessingml.document docx
 application/vnd.osa.netdeploy
 application/vnd.palm		prc,pdb,pqa,oprc
 application/vnd.paos.xml
@@ -731,6 +745,7 @@ audio/MPA
 audio/mpa-robust
 audio/mpeg4-generic
 audio/mpeg			mpga,mp2,mp3			base64
+audio/ogg			ogg,oga
 audio/parityfec
 audio/PCMA
 audio/PCMU
@@ -899,6 +914,7 @@ text/vnd.wap.wmlscript			wmls
 text/vnd.wap.wml			wml
 text/xml-external-parsed-entity
 text/xml
+text/x-component			htc				8bit
 text/x-setext				etx
 text/x-sgml				sgml,sgm			8bit
 text/x-vCalendar			vcs				8bit
@@ -925,6 +941,7 @@ video/mpeg4-generic
 video/mpeg				mp2,mpe,mpeg,mpg		base64
 video/MPV
 video/nv
+video/ogg				ogv
 video/parityfec
 video/pointer
 video/quicktime				qt,mov				base64

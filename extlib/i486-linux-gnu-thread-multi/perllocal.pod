@@ -1,10 +1,10 @@
-=head2 Fri Dec  4 22:54:59 2009: C<Module> L<Text::MicroTemplate|Text::MicroTemplate>
+=head2 Sat Dec 12 01:11:39 2009: C<Module> L<Params::Util|Params::Util>
 
 =over 4
 
 =item *
 
-C<installed into: /tmp/M13yLz3Zr1/outputdir/lib/perl5>
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
 
 =item *
 
@@ -12,7 +12,183 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 0.10>
+C<VERSION: 1.00>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:11:45 2009: C<Module> L<Class::Inspector|Class::Inspector>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.24>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:11:49 2009: C<Module> L<File::ShareDir|File::ShareDir>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.01>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:11:51 2009: C<Module> L<Try::Tiny|Try::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.02>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:11:54 2009: C<Module> L<parent|parent>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.223>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:12:01 2009: C<Module> L<URI|URI>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.51>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:12:10 2009: C<Module> L<MIME::Types|MIME::Types>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.28>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:12:22 2009: C<Module> L<Filesys::Notify::Simple|Filesys::Notify::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.05>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Dec 12 01:12:37 2009: C<Module> L<Devel::StackTrace::AsHTML|Devel::StackTrace::AsHTML>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/rq0XVQRj03/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.04>
 
 =item *
 
