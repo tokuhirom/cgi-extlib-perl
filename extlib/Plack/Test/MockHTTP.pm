@@ -6,6 +6,7 @@ use Carp;
 use HTTP::Request;
 use HTTP::Response;
 use HTTP::Message::PSGI;
+use Try::Tiny;
 
 sub test_psgi {
     my %args = @_;
@@ -15,8 +16,16 @@ sub test_psgi {
 
     my $cb = sub {
         my $req = shift;
+        $req->uri->scheme('http')    unless defined $req->uri->scheme;
+        $req->uri->host('localhost') unless defined $req->uri->host;
         my $env = $req->to_psgi;
-        my $res = HTTP::Response->from_psgi($app->($env));
+
+        my $res = try {
+            HTTP::Response->from_psgi($app->($env));
+        } catch {
+            HTTP::Response->from_psgi([ 500, [ 'Content-Type' => 'text/plain' ], [ $_ ] ]);
+        };
+
         $res->request($req);
         return $res;
     };

@@ -8,7 +8,6 @@ sub call {
     my $env  = shift;
 
     my $res = $self->app->($env);
-    return $res unless ref $res eq 'ARRAY';
     return $res unless $env->{REQUEST_METHOD} =~ /^(GET|HEAD)$/;
 
     $self->response_cb($res, sub {
@@ -26,12 +25,19 @@ no warnings 'uninitialized';
 
 sub etag_matches {
     my($self, $h, $env) = @_;
-    $h->exists('ETag') && $h->get('ETag') eq $env->{HTTP_IF_NONE_MATCH};
+    $h->exists('ETag') && $h->get('ETag') eq _value($env->{HTTP_IF_NONE_MATCH});
 }
 
 sub not_modified_since {
     my($self, $h, $env) = @_;
-    $h->exists('Last-Modified') && $h->get('Last-Modified') eq $env->{HTTP_IF_MODIFIED_SINCE};
+    $h->exists('Last-Modified') && $h->get('Last-Modified') eq _value($env->{HTTP_IF_MODIFIED_SINCE});
+}
+
+sub _value {
+    my $str = shift;
+    # IE sends wrong formatted value(i.e. "Thu, 03 Dec 2009 01:46:32 GMT; length=17936")
+    $str =~ s/;.*$//;
+    return $str;
 }
 
 1;

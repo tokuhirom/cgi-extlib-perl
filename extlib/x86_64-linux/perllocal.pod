@@ -1,0 +1,66 @@
+=head2 Sat May 15 05:46:54 2010: C<Module> L<Hash::MultiValue|Hash::MultiValue>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat May 15 05:46:57 2010: C<Module> L<HTTP::Body|HTTP::Body>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.07>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat May 15 05:47:15 2010: C<Module> L<Plack|Plack>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.9911>
+
+=item *
+
+C<EXE_FILES: scripts/plackup>
+
+=back
+

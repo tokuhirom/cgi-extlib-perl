@@ -1,8 +1,10 @@
 package Plack::Middleware::Lint;
 use strict;
 no warnings;
-use Carp;
+use Carp ();
 use parent qw(Plack::Middleware);
+use Scalar::Util qw(blessed);
+use Plack::Util;
 
 sub call {
     my $self = shift;
@@ -10,8 +12,7 @@ sub call {
 
     $self->validate_env($env);
     my $res = $self->app->($env);
-    $self->validate_res($res);
-    return $res;
+    return $self->validate_res($res);
 }
 
 sub validate_env {
@@ -43,8 +44,8 @@ sub validate_env {
     unless (!defined($env->{'SERVER_PROTOCOL'}) || $env->{'SERVER_PROTOCOL'} =~ m{^HTTP/1.\d$}) {
         Carp::croak('invalid SERVER_PROTOCOL');
     }
-    for my $param (qw/version url_scheme input errors/) {
-        unless (defined($env->{"psgi.$param"})) {
+    for my $param (qw/version url_scheme input errors multithread multiprocess/) {
+        unless (exists $env->{"psgi.$param"}) {
             Carp::croak("missing psgi.$param");
         }
     }
@@ -57,16 +58,59 @@ sub validate_env {
     unless ($env->{'psgi.url_scheme'} =~ /^https?$/) {
         Carp::croak('psgi.version should be "http" or "https"');
     }
+    if ($env->{"psgi.version"}->[1] == 1) { # 1.1
+        for my $param (qw(streaming nonblocking run_once)) {
+            unless (exists $env->{"psgi.$param"}) {
+                Carp::croak("missing psgi.$param");
+            }
+        }
+    }
+    if ($env->{HTTP_CONTENT_TYPE}) {
+        Carp::croak('HTTP_CONTENT_TYPE should not exist');
+    }
+    if ($env->{HTTP_CONTENT_LENGTH}) {
+        Carp::croak('HTTP_CONTENT_LENGTH should not exist');
+    }
 }
 
 sub validate_res {
-    my ($self, $res) = @_;
+    my ($self, $res, $streaming) = @_;
+
+    my $croak = $streaming ? \&Carp::confess : \&Carp::croak;
+
     unless (ref($res) and ref($res) eq 'ARRAY' || ref($res) eq 'CODE') {
-        Carp::croak('response should be arrayref or coderef');
+        $croak->('response should be arrayref or coderef');
     }
-    if (scalar(@$res) == 3 && !ref($res)) {
-        Carp::croak('third elements in response arrayref should be reference');
+
+    if (ref $res eq 'CODE') {
+        return $self->response_cb($res, sub { $self->validate_res(@_, 1) });
     }
+
+    unless (@$res == 3 || ($streaming && @$res == 2)) {
+        $croak->('response needs to be 3 element array, or 2 element in streaming');
+    }
+
+    unless ($res->[0] =~ /^\d+$/ && $res->[0] >= 100) {
+        $croak->('status code needs to be an integer greater than or equal to 100');
+    }
+
+    unless (ref $res->[1] eq 'ARRAY') {
+        $croak->('Headers needs to be an array ref');
+    }
+
+    # @$res == 2 is only right in psgi.streaming, and it's already checked.
+    unless (@$res == 2 ||
+            ref $res->[2] eq 'ARRAY' ||
+            Plack::Util::is_real_fh($res->[2]) ||
+            (blessed($res->[2]) && $res->[2]->can('getline'))) {
+        $croak->('body should be an array ref or filehandle');
+    }
+
+    if (ref $res->[2] eq 'ARRAY' && grep utf8::is_utf8($_), @{$res->[2]}) {
+        $croak->('body must be bytes and should not contain wide characters (UTF-8 strings).');
+    }
+
+    return $res;
 }
 
 1;
@@ -83,13 +127,16 @@ Plack::Middleware::Lint - Validate request and response
   my $app = sub { ... }; # your app or middleware
   $app = Plack::Middleware::Lint->wrap($app);
 
-=head1 DEESCRIPTION
+=head1 DESCRIPTION
 
-Plack::Middleware::Lint is a middleware to validate request and
-response environment. Handy to validate missing parameters etc. when
-writing a server or middleware.
+Plack::Middleware::Lint is a middleware component to validate request
+and response environment. You are strongly suggested to use enable
+this middleware when you develop a framework adapter or a new server
+that implements PSGI interface.
 
 =head1 AUTHOR
+
+Tatsuhiko Miyagawa
 
 Tokuhiro Matsuno
 

@@ -6,9 +6,6 @@ use LWP::UserAgent;
 use Test::TCP;
 use Plack::Loader;
 
-use parent qw(Exporter);
-our @EXPORT = qw( test_server );
-
 sub test_psgi {
     my %args = @_;
 
@@ -21,6 +18,7 @@ sub test_psgi {
             my $port = shift;
             my $cb = sub {
                 my $req = shift;
+                $req->uri->scheme('http');
                 $req->uri->host($args{host} || '127.0.0.1');
                 $req->uri->port($port);
                 return $ua->request($req);

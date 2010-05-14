@@ -64,6 +64,42 @@ our @TEST = (
         },
     ],
     [
+        'big POST',
+        sub {
+            my $cb = shift;
+            my $chunk = "abcdefgh" x 12000;
+            my $req = HTTP::Request->new(POST => "http://127.0.0.1");
+            $req->content_length(length $chunk);
+            $req->content_type('application/octet-stream');
+            $req->content($chunk);
+
+            my $res = $cb->($req);
+            is $res->code, 200;
+            is $res->header('Client-Content-Length'), length $chunk;
+            is length $res->content, length $chunk;
+            is Digest::MD5::md5_hex($res->content), Digest::MD5::md5_hex($chunk);
+        },
+        sub {
+            my $env = shift;
+            my $len = $env->{CONTENT_LENGTH};
+            my $body = '';
+            my $spin;
+            while ($len > 0) {
+                my $rc = $env->{'psgi.input'}->read($body, $env->{CONTENT_LENGTH}, length $body);
+                $len -= $rc;
+                last if $spin++ > 2000;
+            }
+            return [
+                200,
+                [ 'Content-Type' => 'text/plain',
+                  'Client-Content-Length' => $env->{CONTENT_LENGTH},
+                  'Client-Content-Type' => $env->{CONTENT_TYPE},
+              ],
+                [ $body ],
+            ];
+        },
+    ],
+    [
         'psgi.url_scheme',
         sub {
             my $cb = shift;
@@ -344,11 +380,13 @@ our @TEST = (
         },
         sub {
             my $env = shift;
+            open my $io, '>', \my $error;
+            $env->{'psgi.errors'} = $io;
             die "Throwing an exception from app handler. Server shouldn't crash.";
         },
     ],
     [
-        'multi headers',
+        'multi headers (request)',
         sub {
             my $cb  = shift;
             my $req = HTTP::Request->new(
@@ -357,7 +395,7 @@ our @TEST = (
             $req->push_header(Foo => "bar");
             $req->push_header(Foo => "baz");
             my $res = $cb->($req);
-            is($res->content, "bar, baz");
+            like($res->content, qr/^bar,\s*baz$/);
         },
         sub {
             my $env = shift;
@@ -365,6 +403,44 @@ our @TEST = (
                 200,
                 [ 'Content-Type' => 'text/plain', ],
                 [ $env->{HTTP_FOO} ]
+            ];
+        },
+    ],
+    [
+        'multi headers (response)',
+        sub {
+            my $cb  = shift;
+            my $res = $cb->(HTTP::Request->new(GET => "http://127.0.0.1/"));
+            my $foo = $res->header('X-Foo');
+            like $foo, qr/foo,\s*bar,\s*baz/;
+        },
+        sub {
+            my $env = shift;
+            return [
+                200,
+                [ 'Content-Type' => 'text/plain', 'X-Foo', 'foo', 'X-Foo', 'bar, baz' ],
+                [ 'hi' ]
+            ];
+        },
+    ],
+    [
+        'Do not set $env->{COOKIE}',
+        sub {
+            my $cb  = shift;
+            my $req = HTTP::Request->new(
+                GET => "http://127.0.0.1/",
+            );
+            $req->push_header(Cookie => "foo=bar");
+            my $res = $cb->($req);
+            is($res->header('X-Cookie'), 0);
+            is $res->content, 'foo=bar';
+        },
+        sub {
+            my $env = shift;
+            return [
+                200,
+                [ 'Content-Type' => 'text/plain', 'X-Cookie' => $env->{COOKIE} ? 1 : 0 ],
+                [ $env->{HTTP_COOKIE} ]
             ];
         },
     ],
@@ -388,8 +464,8 @@ our @TEST = (
         'REQUEST_URI is set',
         sub {
             my $cb  = shift;
-            my $res = $cb->(GET "http://127.0.0.1/foo/bar%20baz?x=a");
-            is $res->content, '/foo/bar%20baz?x=a';
+            my $res = $cb->(GET "http://127.0.0.1/foo/bar%20baz%73?x=a");
+            is $res->content, '/foo/bar%20baz%73?x=a';
         },
         sub {
             my $env = shift;
@@ -416,7 +492,104 @@ our @TEST = (
             ];
         },
     ],
+    [
+        'a big header value > 128 bytes',
+        sub {
+            my $cb  = shift;
+            my $req = GET "http://127.0.0.1/";
+            my $v = ("abcdefgh" x 16);
+            $req->header('X-Foo' => $v);
+            my $res = $cb->($req);
+            is $res->code, 200;
+            is $res->content, $v;
+        },
+        sub {
+            my $env = shift;
+            return [
+                200,
+                [ 'Content-Type' => 'text/plain' ],
+                [ $env->{HTTP_X_FOO} ],
+            ];
+        },
+    ],
+    [
+        'coderef res',
+        sub {
+            my $cb = shift;
+            my $res = $cb->(GET "http://127.0.0.1/?name=miyagawa");
+            return if $res->code == 501;
 
+            is $res->code, 200;
+            is $res->header('content_type'), 'text/plain';
+            is $res->content, 'Hello, name=miyagawa';
+        },
+        sub {
+            my $env = shift;
+            $env->{'psgi.streaming'} or return [ 501, ['Content-Type','text/plain'], [] ];
+            return sub {
+                my $respond = shift;
+                $respond->([
+                    200,
+                    [ 'Content-Type' => 'text/plain', ],
+                    [ 'Hello, ' . $env->{QUERY_STRING} ],
+                ]);
+            }
+        },
+     ],
+    [
+        'coderef streaming',
+        sub {
+            my $cb = shift;
+            my $res = $cb->(GET "http://127.0.0.1/?name=miyagawa");
+            return if $res->code == 501;
+
+            is $res->code, 200;
+            is $res->header('content_type'), 'text/plain';
+            is $res->content, 'Hello, name=miyagawa';
+        },
+        sub {
+            my $env = shift;
+            $env->{'psgi.streaming'} or return [ 501, ['Content-Type','text/plain'], [] ];
+
+            return sub {
+                my $respond = shift;
+
+                my $writer = $respond->([
+                    200,
+                    [ 'Content-Type' => 'text/plain', ],
+                ]);
+
+                $writer->write("Hello, ");
+                $writer->write($env->{QUERY_STRING});
+                $writer->close();
+            }
+        },
+     ],
+     [
+         'CRLF output and FCGI parse bug',
+        sub {
+            my $cb = shift;
+            my $res = $cb->(GET "http://127.0.0.1/");
+
+            is $res->header("Foo"), undef;
+            is $res->content, "Foo: Bar\r\n\r\nHello World";
+        },
+        sub {
+            return [ 200, [ "Content-Type", "text/plain" ], [ "Foo: Bar\r\n\r\nHello World" ] ];
+        },
+     ],
+     [
+         'test 404',
+        sub {
+            my $cb = shift;
+            my $res = $cb->(GET "http://127.0.0.1/");
+            is $res->code, 404;
+            is $res->content, 'Not Found';
+        },
+        sub {
+            return [ 404, [ "Content-Type", "text/plain" ], [ "Not Found" ] ];
+        },
+     ],
 );
 
 sub runtests {
@@ -427,13 +600,13 @@ sub runtests {
 }
 
 sub run_server_tests {
-    my($class, $server, $server_port, $http_port) = @_;
+    my($class, $server, $server_port, $http_port, %args) = @_;
 
     if (ref $server ne 'CODE') {
         my $server_class = $server;
         $server = sub {
             my($port, $app) = @_;
-            my $server = Plack::Loader->load($server_class, port => $port, host => "127.0.0.1");
+            my $server = Plack::Loader->load($server_class, port => $port, host => "127.0.0.1", %args);
             $app = Plack::Middleware::Lint->wrap($app);
             $server->run($app);
         }
@@ -486,7 +659,7 @@ Plack::Test::Suite is a test suite to test a new PSGI server implementation.
 
 =head1 AUTHOR
 
-Tokuhiro Matsuo
+Tokuhiro Matsuno
 
 Tatsuhiko Miyagawa
 

@@ -1,8 +1,8 @@
 package Plack::App::FCGIDispatcher;
 use strict;
 use warnings;
-use parent qw(Plack::Middleware);
-__PACKAGE__->mk_accessors(qw(host port socket));
+use parent qw(Plack::Component);
+use Plack::Util::Accessor qw(host port socket);
 
 use FCGI::Client;
 use HTTP::Response;
@@ -31,7 +31,19 @@ sub call {
 
     my $conn = FCGI::Client::Connection->new(sock => $sock);
     my $input = delete $env->{'psgi.input'};
-    my $content_in = do { local $/; <$input> };
+
+    my $content_in = '';
+    if (my $cl = $env->{CONTENT_LENGTH}) {
+        while ($cl > 0) {
+            my $read = $input->read($content_in, $cl, length $content_in);
+            $cl -= $read;
+        }
+    }
+
+    for my $key (keys %$env) {
+        delete $env->{$key} if $key =~ /^psgi\./;
+    }
+
     my ($stdout, $stderr) = $conn->request(
         $env,
         $content_in,

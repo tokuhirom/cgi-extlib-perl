@@ -2,7 +2,7 @@ package Plack::Middleware::AccessLog;
 use strict;
 use warnings;
 use parent qw( Plack::Middleware );
-__PACKAGE__->mk_accessors(qw( logger format ));
+use Plack::Util::Accessor qw( logger format );
 
 use Carp ();
 use Plack::Util;
@@ -46,7 +46,7 @@ sub log_line {
         my($block, $type) = @_;
         if ($type eq 'i') {
             $block =~ s/-/_/;
-            return $env->{"HTTP_" . uc($block)} || "-";
+            return _safe($env->{"HTTP_" . uc($block)}) || "-";
         } elsif ($type eq 'o') {
             return scalar $h->get($block) || "-";
         } elsif ($type eq 't') {
@@ -59,11 +59,11 @@ sub log_line {
 
     my %char_handler = (
         '%' => sub { '%' },
-        h => sub { $env->{HTTP_X_FORWARDED_FOR} || $env->{REMOTE_ADDR} || '-' },
+        h => sub { $env->{REMOTE_ADDR} || '-' },
         l => sub { '-' },
         u => sub { $env->{REMOTE_USER} || '-' },
         t => sub { "[" . $strftime->("%d/%b/%Y %H:%M:%S", localtime) . "]" },
-        r => sub { $env->{REQUEST_METHOD} . " " . $env->{REQUEST_URI} .
+        r => sub { _safe($env->{REQUEST_METHOD}) . " " . _safe($env->{REQUEST_URI}) .
                    " " . $env->{SERVER_PROTOCOL} },
         s => sub { $status },
         b => sub { $opts->{content_length} || $h->get('Content-Length') || "-" },
@@ -88,12 +88,20 @@ sub log_line {
     $fmt =~ s{
         (?:
          \%\{(.+?)\}([a-z]) |
-         \%(?:[<>])?([a-z\%])
+         \%(?:[<>])?([a-zA-Z\%])
         )
     }{ $1 ? $block_handler->($1, $2) : $char_handler->($3) }egx;
 
     return $fmt . "\n";
 }
+
+sub _safe {
+    my $string = shift;
+    $string =~ s/([^[:print:]])/"\\x" . unpack("H*", $1)/eg
+        if defined $string;
+    $string;
+}
+
 
 __END__
 

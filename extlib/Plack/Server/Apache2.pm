@@ -1,75 +1,12 @@
 package Plack::Server::Apache2;
 use strict;
-use warnings;
-use Apache2::RequestRec;
-use Apache2::RequestIO;
-use Apache2::RequestUtil;
-use Apache2::Response;
-use Apache2::Const -compile => qw(OK);
-use APR::Table;
-use IO::Handle;
-use Plack::Util;
-use Scalar::Util;
+use parent qw(Plack::Handler::Apache2);
+use Carp;
 
-my %apps; # psgi file to $app mapping
-
-sub handler {
-    my $r = shift;
-
-    my $psgi = $r->dir_config('psgi_app');
-
-    my $app = $apps{$psgi} ||= do {
-        delete $ENV{MOD_PERL}; # trick Catalyst/CGI.pm etc.
-        Plack::Util::load_psgi $psgi;
-    };
-
-    $r->subprocess_env; # let Apache create %ENV for us :)
-
-    my $env = {
-        %ENV,
-        'psgi.version'        => [ 1, 0 ],
-        'psgi.url_scheme'     => ($ENV{HTTPS}||'off') =~ /^(?:on|1)$/i ? 'https' : 'http',
-        'psgi.input'          => $r,
-        'psgi.errors'         => *STDERR,
-        'psgi.multithread'    => Plack::Util::FALSE,
-        'psgi.multiprocess'   => Plack::Util::TRUE,
-        'psgi.run_once'       => Plack::Util::FALSE,
-    };
-
-    my $vpath    = $env->{SCRIPT_NAME} . $env->{PATH_INFO};
-    my $location = $r->location || "/";
-       $location =~ s!/$!!;
-    (my $path_info = $vpath) =~ s/^\Q$location\E//;
-
-    $env->{SCRIPT_NAME} = $location;
-    $env->{PATH_INFO}   = $path_info;
-
-    my($status, $headers, $body) = @{ $app->($env) };
-
-    my $hdrs = ($status >= 200 && $status < 300)
-        ? $r->headers_out : $r->err_headers_out;
-
-    Plack::Util::header_iter($headers, sub {
-        my($h, $v) = @_;
-        if (lc $h eq 'content-type') {
-            $r->content_type($v);
-        } elsif (lc $h eq 'content-length') {
-            $r->set_content_length($v);
-        } else {
-            $hdrs->add($h => $v);
-        }
-    });
-
-    $r->status($status);
-
-    if (Scalar::Util::blessed($body) and $body->can('path') and my $path = $body->path) {
-        $r->sendfile($path);
-    } else {
-        Plack::Util::foreach($body, sub { $r->print(@_) });
-        $r->rflush;
-    }
-
-    return Apache2::Const::OK;
+sub new {
+    my $class = shift;
+    Carp::carp "Use of $class is deprecated. Use Plack::Handler::Apache2 or Plack::Loader to upgrade.";
+    $class->SUPER::new(@_);
 }
 
 1;
@@ -78,18 +15,10 @@ __END__
 
 =head1 NAME
 
-Plack::Server::Apache2 - Apache 2.0 handlers to run PSGI application
+Plack::Server::Apache2 - DEPRECATED
 
-=head1 SYNOPSIS
+=head1 DESCRIPTION
 
-  <Locaion />
-  SetHandler perl-script
-  PerlHandler Plack::Server::Apache2
-  PerlSetVar psgi_app /path/to/app.psgi
-  </Location>
-
-=head1 AUTHOR
-
-Tatsuhiko Miyagawa
+B<This module is deprecated>. See L<Plack::Handler::Apache2>.
 
 =cut

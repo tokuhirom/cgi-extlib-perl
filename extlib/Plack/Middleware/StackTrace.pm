@@ -2,8 +2,6 @@ package Plack::Middleware::StackTrace;
 use strict;
 use warnings;
 use parent qw/Plack::Middleware/;
-use Plack;
-use Plack::Util;
 use Devel::StackTrace;
 use Devel::StackTrace::AsHTML;
 use Try::Tiny;
@@ -30,6 +28,11 @@ sub call {
         my $body = $trace->as_html;
         $res = [500, ['Content-Type' => 'text/html; charset=utf-8'], [ $body ]];
     }
+
+    # break $trace here since $SIG{__DIE__} holds the ref to it, and
+    # $trace has refs to Standalone.pm's args ($conn etc.) and
+    # prevents garbage collection to be happening.
+    undef $trace;
 
     return $res;
 }

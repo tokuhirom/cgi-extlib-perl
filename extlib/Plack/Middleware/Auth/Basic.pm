@@ -1,9 +1,20 @@
 package Plack::Middleware::Auth::Basic;
 use strict;
 use parent qw(Plack::Middleware);
-__PACKAGE__->mk_accessors(qw(realm authenticator));
-
+use Plack::Util::Accessor qw( realm authenticator );
+use Scalar::Util;
 use MIME::Base64;
+
+sub prepare_app {
+    my $self = shift;
+
+    my $auth = $self->authenticator or die 'authenticator is not set';
+    if (Scalar::Util::blessed($auth) && $auth->can('authenticate')) {
+        $self->authenticator(sub { $auth->authenticate(@_) });
+    } elsif (ref $auth ne 'CODE') {
+        die 'authenticator should be a code reference or an object that responds to authenticate()';
+    }
+}
 
 sub call {
     my($self, $env) = @_;
@@ -13,8 +24,8 @@ sub call {
 
     if ($auth =~ /^Basic (.*)$/) {
         my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ":");
-        my $auth = $self->authenticator or die 'authenticator is not set';
-        if ($auth->($user, $pass)) {
+        $pass = '' unless defined $pass;
+        if ($self->authenticator->($user, $pass)) {
             $env->{REMOTE_USER} = $user;
             return $self->app->($env);
         }
@@ -70,6 +81,13 @@ Plack::Middleware::Auth::Basic is a basic authentication handler for Plack.
 
 A callback function that takes username and password supplied and
 returns whether the authentication succeeds. Required.
+
+Authenticator can also be an object that responds to C<authenticate>
+method that takes username and password and returns boolean, so
+backends for L<Authen::Simple> is perfect to use:
+
+  use Authen::Simple::LDAP;
+  enable "Auth::Basic", authenticator => Authen::Simple::LDAP->new(...);
 
 =item realm
 

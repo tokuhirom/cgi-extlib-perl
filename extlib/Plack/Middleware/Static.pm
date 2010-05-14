@@ -4,7 +4,7 @@ use warnings;
 use parent qw/Plack::Middleware/;
 use Plack::App::File;
 
-__PACKAGE__->mk_accessors(qw( path root encoding ));
+use Plack::Util::Accessor qw( path root encoding );
 
 sub call {
     my $self = shift;
@@ -20,18 +20,12 @@ sub _handle_static {
     my($self, $env) = @_;
 
     my $path_match = $self->path or return;
+    my $path = $env->{PATH_INFO};
 
-    my $path = do {
-        my $matched;
-        local $_ = $env->{PATH_INFO};
-        if (ref $path_match eq 'CODE') {
-            $matched = $path_match->($_);
-        } else {
-            $matched = $_ =~ $path_match;
-        }
+    for ($path) {
+        my $matched = 'CODE' eq ref $path_match ? $path_match->($_) : $_ =~ $path_match;
         return unless $matched;
-        $_;
-    } or return;
+    }
 
     $self->{file} ||= Plack::App::File->new({ root => $self->root || '.', encoding => $self->encoding });
     local $env->{PATH_INFO} = $path; # rewrite PATH
@@ -67,7 +61,7 @@ traversal) or the file is there but not readable, this middleware will
 return a 403 Forbidden response.
 
 The content type returned will be determined from the file extension
-based on L<MIME::Types>.
+based on L<Plack::MIME>.
 
 =head1 CONFIGURATIONS
 

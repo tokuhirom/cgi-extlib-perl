@@ -5,7 +5,7 @@ our @EXPORT = qw( builder add enable enable_if mount );
 
 use Carp ();
 use Plack::App::URLMap;
-use Plack::Middleware::Conditional;
+use Plack::Middleware::Conditional; # TODO delayed load?
 
 sub new {
     my $class = shift;
@@ -135,7 +135,7 @@ is syntactically equal to:
   $app = Plack::Middleware::Bar->wrap($app, opt => "val");
   $app = Plack::Middleware::Foo->wrap($app);
 
-In other words, you're suposed to C<add> middleware from outer to inner.
+In other words, you're supposed to C<add> middleware from outer to inner.
 
 =head1 URLMap support
 

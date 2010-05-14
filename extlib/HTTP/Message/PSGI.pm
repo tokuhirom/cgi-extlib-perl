@@ -6,6 +6,7 @@ our @EXPORT = qw( req_to_psgi res_from_psgi );
 
 use Carp ();
 use URI::Escape ();
+use Plack::Util;
 use Try::Tiny;
 
 my $TRUE  = (1 == 1);
@@ -25,9 +26,25 @@ sub req_to_psgi {
     $uri->host('localhost') unless $uri->host;
     $uri->port(80)          unless $uri->port;
     $uri->host_port($host)  unless !$host || ( $host eq $uri->host_port );
-    $uri = $uri->canonical;
 
-    open my $input, "<", \do { $req->content };
+    # STUPID: If the request URI is utf-8 decoded, methods like ->path
+    # and ->host returns decoded strings in ascii, which causes double
+    # encoded strings in uri_unescape and URI concatenation in
+    # Plack::Request :/
+    utf8::downgrade $$uri;
+
+    my $input;
+    my $content = $req->content;
+    if (ref $content eq 'CODE') {
+        if (defined $req->content_length) {
+            $input = HTTP::Message::PSGI::ChunkedInput->new($content);
+        } else {
+            $req->header("Transfer-Encoding" => "chunked");
+            $input = HTTP::Message::PSGI::ChunkedInput->new($content, 1);
+        }
+    } else {
+        open $input, "<", \$content;
+    }
 
     my $env = {
         PATH_INFO         => URI::Escape::uri_unescape($uri->path),
@@ -41,13 +58,15 @@ sub req_to_psgi {
         REMOTE_PORT       => int( rand(64000) + 1000 ),                   # not in RFC 3875
         REQUEST_URI       => $uri->path_query,                            # not in RFC 3875
         REQUEST_METHOD    => $req->method,
-        'psgi.version'      => [ 1, 0 ],
+        'psgi.version'      => [ 1, 1 ],
         'psgi.url_scheme'   => $uri->scheme eq 'https' ? 'https' : 'http',
         'psgi.input'        => $input,
         'psgi.errors'       => *STDERR,
         'psgi.multithread'  => $FALSE,
         'psgi.multiprocess' => $FALSE,
         'psgi.run_once'     => $TRUE,
+        'psgi.streaming'    => $TRUE,
+        'psgi.nonblocking'  => $FALSE,
         @_,
     };
 
@@ -70,23 +89,55 @@ sub req_to_psgi {
 }
 
 sub res_from_psgi {
-    my($status, $headers, $body) = @{+shift};
-    my $res = HTTP::Response->new($status);
-    $res->headers->header(@$headers) if @$headers;
+    my ($psgi_res) = @_;
 
-    if (ref $body eq 'ARRAY') {
-        $res->content(join '', @$body);
-    } else {
-        local $/ = \4096;
-        my $content;
-        while (defined(my $buf = $body->getline)) {
-            $content .= $buf;
-        }
-        $body->close;
-        $res->content($content);
+    my $res;
+    if (ref $psgi_res eq 'ARRAY') {
+        _res_from_psgi($psgi_res, \$res);
+    }
+    elsif (ref $psgi_res eq 'CODE') {
+        $psgi_res->(sub {
+            _res_from_psgi($_[0], \$res);
+        });
     }
 
     return $res;
+}
+
+sub _res_from_psgi {
+    my ($status, $headers, $body) = @{+shift};
+    my $res_ref = shift;
+
+    my $convert_resp = sub {
+        my $res = HTTP::Response->new($status);
+        $res->headers->header(@$headers) if @$headers;
+
+        if (ref $body eq 'ARRAY') {
+            $res->content(join '', @$body);
+        } else {
+            local $/ = \4096;
+            my $content;
+            while (defined(my $buf = $body->getline)) {
+                $content .= $buf;
+            }
+            $body->close;
+            $res->content($content);
+        }
+
+        ${ $res_ref } = $res;
+
+        return;
+    };
+
+    if (!defined $body) {
+        my $o = Plack::Util::inline_object
+            write => sub { push @{ $body ||= [] }, @_ },
+            close => $convert_resp;
+
+        return $o;
+    }
+
+    $convert_resp->();
 }
 
 sub HTTP::Request::to_psgi {
@@ -97,6 +148,48 @@ sub HTTP::Response::from_psgi {
     my $class = shift;
     res_from_psgi(@_);
 }
+
+package
+    HTTP::Message::PSGI::ChunkedInput;
+
+sub new {
+    my($class, $content, $chunked) = @_;
+
+    my $content_cb;
+    if ($chunked) {
+        my $done;
+        $content_cb = sub {
+            my $chunk = $content->();
+            return if $done;
+            unless (defined $chunk) {
+                $done = 1;
+                return "0\015\012\015\012";
+            }
+            return '' unless length $chunk;
+            return sprintf('%x', length $chunk) . "\015\012$chunk\015\012";
+        };
+    } else {
+        $content_cb = $content;
+    }
+
+    bless { content => $content_cb }, $class;
+}
+
+sub read {
+    my $self = shift;
+
+    my $chunk = $self->{content}->();
+    return 0 unless defined $chunk;
+
+    $_[0] = '';
+    substr($_[0], $_[2] || 0, length $chunk) = $chunk;
+
+    return length $chunk;
+}
+
+sub close { }
+
+package HTTP::Message::PSGI;
 
 1;
 
@@ -135,7 +228,7 @@ L<Plack::Response>.
 
   my $env = req_to_psgi($req [, $key => $val ... ]);
 
-Converts HTTP::Response object into PSGI env hash reference.
+Converts HTTP::Request object into PSGI env hash reference.
 
 =item HTTP::Request::to_psgi
 
