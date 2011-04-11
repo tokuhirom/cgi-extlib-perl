@@ -20,8 +20,11 @@ sub _uric_escape {
 
 sub _host_escape {
     return unless $_[0] =~ /[^URI::uric]/;
-    require URI::_idna;
-    $_[0] = URI::_idna::encode($_[0]);
+    eval {
+	require URI::_idna;
+	$_[0] = URI::_idna::encode($_[0]);
+    };
+    return 0 if $@;
     return 1;
 }
 
@@ -34,7 +37,7 @@ sub as_iri {
 	    my $ui = $host =~ s/(.*@)// ? $1 : "";
 	    my $port = $host =~ s/(:\d+)\z// ? $1 : "";
 	    require URI::_idna;
-	    $host = URI::_idna::encode($host);
+	    $host = URI::_idna::decode($host);
 	    $str = "$scheme//$ui$host$port$rest";
 	}
     }

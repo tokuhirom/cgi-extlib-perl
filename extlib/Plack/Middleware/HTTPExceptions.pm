@@ -13,7 +13,7 @@ sub call {
     my $res = try {
         $self->app->($env);
     } catch {
-        $self->transform_error($_);
+        $self->transform_error($_, $env);
     };
 
     return $res if ref $res eq 'ARRAY';
@@ -29,7 +29,7 @@ sub call {
                 Carp::cluck $_;
                 $writer->close;
             } else {
-                my $res = $self->transform_error($_);
+                my $res = $self->transform_error($_, $env);
                 $respond->($res);
             }
         };
@@ -37,7 +37,7 @@ sub call {
 }
 
 sub transform_error {
-    my($self, $e) = @_;
+    my($self, $e, $env) = @_;
 
     my($code, $message);
     if (blessed $e && $e->can('code')) {
@@ -47,6 +47,7 @@ sub transform_error {
             overload::Method($e, '""') ? "$e"          : undef;
     } else {
         $code = 500;
+        $env->{'psgi.errors'}->print($e);
     }
 
     if ($code !~ /^[3-5]\d\d$/) {
@@ -55,7 +56,16 @@ sub transform_error {
 
     $message ||= HTTP::Status::status_message($code);
 
-    return [ $code, [ 'Content-Type' => 'text/plain', 'Content-Length' => length($message) ], [ $message ] ];
+    my @headers = (
+         'Content-Type'   => 'text/plain',
+         'Content-Length' => length($message),
+    );
+
+    if ($code =~ /^3/ && (my $loc = eval { $e->location })) {
+        push(@headers, Location => $loc);
+    }
+
+    return [ $code, \@headers, [ $message ] ];
 }
 
 1;
@@ -68,9 +78,11 @@ Plack::Middleware::HTTPExceptions - Catch HTTP exceptions
 
 =head1 SYNOPSIS
 
+  use HTTP::Exception;
+
   my $app = sub {
       # ...
-      MyHTTPError::BadGateway->throw;
+      HTTP::Exception::500->throw;
   };
 
   builder {
@@ -94,6 +106,14 @@ stringification, to represent the text of the error, which defaults to
 the status message of error codes, such as I<Service Unavailable> for
 C<503>.
 
+If the code is in the 3xx range and the exception implements the 'location'
+method (HTTP::Exception::3xx does), the Location header will be set in the
+response, so you can do redirects this way.
+
+There's a CPAN module L<HTTP::Exception> and they are pefect to throw
+from your application to let this middleware catch and display, but
+you can also implement your own exception class to throw.
+
 All the other errors that can't be translated into HTTP errors are
 just rethrown to the outer frame.
 
@@ -103,6 +123,6 @@ Tatsuhiko Miyagawa
 
 =head1 SEE ALSO
 
-paste.httpexceptions
+paste.httpexceptions L<HTTP::Exception>
 
 =cut

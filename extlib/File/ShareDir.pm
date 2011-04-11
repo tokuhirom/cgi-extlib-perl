@@ -107,28 +107,30 @@ exception.
 
 use 5.005;
 use strict;
-use Carp             'croak';
+use Carp             ();
 use Config           ();
 use Exporter         ();
 use File::Spec       ();
-use Params::Util     '_CLASS';
 use Class::Inspector ();
 
-use vars qw{$VERSION @ISA @EXPORT_OK %EXPORT_TAGS};
+use vars qw{ $VERSION @ISA @EXPORT_OK %EXPORT_TAGS };
 BEGIN {
-	$VERSION     = '1.01';
+	$VERSION     = '1.03';
 	@ISA         = qw{ Exporter };
 	@EXPORT_OK   = qw{
-		dist_dir dist_file
-		module_dir module_file
-		class_dir class_file
+		dist_dir
+		dist_file
+		module_dir
+		module_file
+		class_dir
+		class_file
 	};
 	%EXPORT_TAGS = (
 		ALL => [ @EXPORT_OK ],
-	);	
+	);
 }
 
-use constant IS_MACOS => !!($^O eq 'MacOS');
+use constant IS_MACOS => !! ($^O eq 'MacOS');
 
 
 
@@ -166,7 +168,7 @@ sub dist_dir {
 	return $dir if defined $dir;
 
 	# Ran out of options
-	croak("Failed to find share dir for dist '$dist'");
+	Carp::croak("Failed to find share dir for dist '$dist'");
 }
 
 sub _dist_dir_new {
@@ -183,7 +185,7 @@ sub _dist_dir_new {
 		my $dir = File::Spec->catdir( $inc, $path );
 		next unless -d $dir;
 		unless ( -r $dir ) {
-			croak("Found directory '$dir', but no read permissions");
+			Carp::croak("Found directory '$dir', but no read permissions");
 		}
 		return $dir;
 	}
@@ -205,7 +207,7 @@ sub _dist_dir_old {
 		my $dir = File::Spec->catdir( $inc, $path );
 		next unless -d $dir;
 		unless ( -r $dir ) {
-			croak("Found directory '$dir', but no read permissions");
+			Carp::croak("Found directory '$dir', but no read permissions");
 		}
 		return $dir;
 	}
@@ -259,7 +261,7 @@ sub _module_dir_new {
 		my $dir = File::Spec->catdir( $inc, $path );
 		next unless -d $dir;
 		unless ( -r $dir ) {
-			croak("Found directory '$dir', but no read permissions");
+			Carp::croak("Found directory '$dir', but no read permissions");
 		}
 		return $dir;
 	}
@@ -276,10 +278,10 @@ sub _module_dir_old {
 	$long  =~ m/^(.*)\Q$short\E\.pm\z/s or die("Failed to find base dir");
 	my $dir = File::Spec->catdir( "$1", 'auto', $short );
 	unless ( -d $dir ) {
-		croak("Directory '$dir', does not exist");
+		Carp::croak("Directory '$dir', does not exist");
 	}
 	unless ( -r $dir ) {
-		croak("Directory '$dir', no read permissions");
+		Carp::croak("Directory '$dir', no read permissions");
 	}
 	return $dir;
 }
@@ -327,10 +329,10 @@ sub _dist_file_new {
 	# Does the file exist
 	return undef unless -e $path;
 	unless ( -f $path ) {
-		croak("Found dist_file '$path', but not a file");
+		Carp::croak("Found dist_file '$path', but not a file");
 	}
 	unless ( -r $path ) {
-		croak("File '$path', no read permissions");
+		Carp::croak("File '$path', no read permissions");
 	}
 
 	return $path;
@@ -351,13 +353,13 @@ sub _dist_file_old {
 		my $full = File::Spec->catdir( $inc, $path );
 		next unless -e $full;
 		unless ( -r $full ) {
-			croak("Directory '$full', no read permissions");
+			Carp::croak("Directory '$full', no read permissions");
 		}
 		return $full;
 	}
 
 	# Couldn't find it
-	croak("Failed to find shared file '$file' for dist '$dist'");
+	Carp::croak("Failed to find shared file '$file' for dist '$dist'");
 }
 
 =pod
@@ -389,10 +391,10 @@ sub module_file {
 	my $dir    = module_dir($module);
 	my $path   = File::Spec->catfile($dir, $file);
 	unless ( -e $path ) {
-		croak("File '$file' does not exist in module dir");
+		Carp::croak("File '$file' does not exist in module dir");
 	}
 	unless ( -r $path ) {
-		croak("File '$file' cannot be read, no read permissions");
+		Carp::croak("File '$file' cannot be read, no read permissions");
 	}
 	$path;
 }
@@ -456,11 +458,11 @@ sub class_file {
 			next;
 		}
 		unless ( -r $path ) {
-			croak("File '$file' cannot be read, no read permissions");
+			Carp::croak("File '$file' cannot be read, no read permissions");
 		}
 		return $path;
 	}
-	croak("File '$file' does not exist in class or parent shared files");
+	Carp::croak("File '$file' does not exist in class or parent shared files");
 }
 
 
@@ -498,32 +500,43 @@ sub _dist_packfile {
 	die "CODE INCOMPLETE";
 }
 
+# Inlined from Params::Util pure perl version
+sub _CLASS {
+    (defined $_[0] and ! ref $_[0] and $_[0] =~ m/^[^\W\d]\w*(?:::\w+)*\z/s) ? $_[0] : undef;
+}
+
+
+# Maintainer note: The following private functions are used by
+#                  File::ShareDir::PAR. (It has to or else it would have to copy&fork)
+#                  So if you significantly change or even remove them, please
+#                  notify the File::ShareDir::PAR maintainer(s). Thank you!    
+
 # Matches a valid distribution name
 ### This is a total guess at this point
 sub _DIST {
 	if ( defined $_[0] and ! ref $_[0] and $_[0] =~ /^[a-z0-9+_-]+$/is ) {
 		return shift;
 	}
-	croak("Not a valid distribution name");
+	Carp::croak("Not a valid distribution name");
 }
 
 # A valid and loaded module name
 sub _MODULE {
-	my $module = _CLASS(shift) or croak("Not a valid module name");
+	my $module = _CLASS(shift) or Carp::croak("Not a valid module name");
 	if ( Class::Inspector->loaded($module) ) {
 		return $module;
 	}
-	croak("Module '$module' is not loaded");
+	Carp::croak("Module '$module' is not loaded");
 }
 
 # A valid file name
 sub _FILE {
 	my $file = shift;
 	unless ( defined $file and ! ref $file and length $file ) {
-		croak("Did not pass a file name");
+		Carp::croak("Did not pass a file name");
 	}
 	if ( File::Spec->file_name_is_absolute($file) ) {
-		croak("Cannot use absolute file name '$file'");
+		Carp::croak("Cannot use absolute file name '$file'");
 	}
 	$file;
 }
@@ -551,7 +564,7 @@ L<File::ShareDir::PAR>
 
 =head1 COPYRIGHT
 
-Copyright 2005 - 2009 Adam Kennedy.
+Copyright 2005 - 2011 Adam Kennedy.
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.

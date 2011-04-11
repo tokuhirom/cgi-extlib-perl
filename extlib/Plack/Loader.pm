@@ -22,9 +22,11 @@ sub auto {
     my $server = try {
         $class->load($backend, @args);
     } catch {
-        warn "Autoloading '$backend' backend failed. Falling back to the Standalone. ",
-            "(You might need to install Plack::Handler::$backend from CPAN)\n"
-                if $ENV{PLACK_DEV} && $ENV{PLACK_DEV} eq 'development';
+        if (($ENV{PLACK_ENV}||'') eq 'development' or !/Can't locate/) {
+            warn "Autoloading '$backend' backend failed. Falling back to the Standalone. ",
+                "(You might need to install Plack::Handler::$backend from CPAN.  Caught error was: $_)\n"
+                    if $ENV{PLACK_ENV} && $ENV{PLACK_ENV} eq 'development';
+        }
         $class->load('Standalone' => @args);
     };
 
@@ -59,16 +61,18 @@ sub preload_app {
 sub guess {
     my $class = shift;
 
-    return $ENV{PLACK_SERVER} if $ENV{PLACK_SERVER};
+    my $env = $class->env;
 
-    if ($ENV{PHP_FCGI_CHILDREN} || $ENV{FCGI_ROLE} || $ENV{FCGI_SOCKET_PATH}) {
+    return $env->{PLACK_SERVER} if $env->{PLACK_SERVER};
+
+    if ($env->{PHP_FCGI_CHILDREN} || $env->{FCGI_ROLE} || $env->{FCGI_SOCKET_PATH}) {
         return "FCGI";
-    } elsif ($ENV{GATEWAY_INTERFACE}) {
+    } elsif ($env->{GATEWAY_INTERFACE}) {
         return "CGI";
     } elsif (exists $INC{"AnyEvent.pm"}) {
         return "Twiggy";
     } elsif (exists $INC{"Coro.pm"}) {
-        return "Coro";
+        return "Corona";
     } elsif (exists $INC{"POE.pm"}) {
         return "POE";
     } elsif (exists $INC{"Danga/Socket.pm"}) {
@@ -77,6 +81,8 @@ sub guess {
         return "Standalone";
     }
 }
+
+sub env { \%ENV }
 
 sub run {
     my($self, $server, $builder) = @_;
@@ -98,7 +104,7 @@ Plack::Loader - (auto)load Plack Servers
   Plack::Loader->auto(%args)->run($app);
 
   # specify the implementation with a name
-  Plack::Loader->load('Standalone::Prefork', %args)->run($app);
+  Plack::Loader->load('FCGI', %args)->run($app);
 
 =head1 DESCRIPTION
 

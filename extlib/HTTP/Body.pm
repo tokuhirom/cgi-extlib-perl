@@ -1,10 +1,11 @@
 package HTTP::Body;
+BEGIN {
+  $HTTP::Body::VERSION = '1.12';
+}
 
 use strict;
 
 use Carp       qw[ ];
-
-our $VERSION = '1.07';
 
 our $TYPES = {
     'application/octet-stream'          => 'HTTP::Body::OctetStream',
@@ -49,9 +50,10 @@ HTTP::Body - HTTP Body Parser
             $body->add($buffer);
         }
         
-        my $uploads = $body->upload; # hashref
-        my $params  = $body->param;  # hashref
-        my $body    = $body->body;   # IO::Handle
+        my $uploads     = $body->upload;     # hashref
+        my $params      = $body->param;      # hashref
+        my $param_order = $body->param_order # arrayref
+        my $body        = $body->body;       # IO::Handle
     }
 
 =head1 DESCRIPTION
@@ -108,6 +110,7 @@ sub new {
         content_type   => $content_type,
         length         => 0,
         param          => {},
+        param_order    => [],
         state          => 'buffering',
         upload         => {},
         tmpdir         => File::Spec->tmpdir(),
@@ -346,6 +349,8 @@ sub param {
         else {
             $self->{param}->{$name} = $value;
         }
+
+        push @{$self->{param_order}}, $name;
     }
 
     return $self->{param};
@@ -390,7 +395,31 @@ sub tmpdir {
     return $self->{tmpdir};
 }
 
+=item param_order
+
+Returns the array ref of the param keys in the order how they appeared on the body
+
+=cut
+
+sub param_order {
+    return shift->{param_order};
+}
+
 =back
+
+=head1 SUPPORT
+
+Since its original creation this module has been taken over by the Catalyst
+development team. If you want to contribute patches, these will be your
+primary contact points:
+
+IRC:
+
+    Join #catalyst-dev on irc.perl.org.
+
+Mailing Lists:
+
+    http://lists.scsys.co.uk/cgi-bin/mailman/listinfo/catalyst-dev
 
 =head1 AUTHOR
 
@@ -399,6 +428,16 @@ Christian Hansen, C<chansen@cpan.org>
 Sebastian Riedel, C<sri@cpan.org>
 
 Andy Grundman, C<andy@hybridized.org>
+
+=head1 CONTRIBUTORS
+
+Simon Elliott C<cpan@papercreatures.com>
+
+Kent Fredric <kentnl@cpan.org>
+
+Christian Walde
+
+Torsten Raudssus <torsten@raudssus.de>
 
 =head1 LICENSE
 

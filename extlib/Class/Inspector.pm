@@ -49,13 +49,15 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_IDENTIFIER $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.24';
+	$VERSION = '1.25';
 
 	# If Unicode is available, enable it so that the
 	# pattern matches below match unicode method names.
 	# We can safely ignore any failure here.
-	local $@;
-	eval "require utf8; utf8->import";
+	SCOPE: {
+		local $@;
+		eval "require utf8; utf8->import";
+	}
 
 	# Predefine some regexs
 	$RE_IDENTIFIER = qr/\A[^\W\d]\w*\z/s;
@@ -116,7 +118,8 @@ sub loaded {
 }
 
 sub _loaded {
-	my ($class, $name) = @_;
+	my $class = shift;
+	my $name  = shift;
 
 	# Handle by far the two most common cases
 	# This is very fast and handles 99% of cases.
@@ -624,7 +627,7 @@ L<http://ali.as/>, L<Class::Handle>
 
 =head1 COPYRIGHT
 
-Copyright 2002 - 2009 Adam Kennedy.
+Copyright 2002 - 2011 Adam Kennedy.
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.

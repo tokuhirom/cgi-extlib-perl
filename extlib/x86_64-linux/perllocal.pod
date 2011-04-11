@@ -1,10 +1,10 @@
-=head2 Sat May 15 05:46:54 2010: C<Module> L<Hash::MultiValue|Hash::MultiValue>
+=head2 Mon Apr 11 19:31:52 2011: C<Module> L<Hash::MultiValue|Hash::MultiValue>
 
 =over 4
 
 =item *
 
-C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
 
 =item *
 
@@ -20,13 +20,13 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Sat May 15 05:46:57 2010: C<Module> L<HTTP::Body|HTTP::Body>
+=head2 Mon Apr 11 19:31:54 2011: C<Module> L<Try::Tiny|Try::Tiny>
 
 =over 4
 
 =item *
 
-C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
 
 =item *
 
@@ -34,7 +34,7 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 1.07>
+C<VERSION: 0.09>
 
 =item *
 
@@ -42,13 +42,13 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Sat May 15 05:47:15 2010: C<Module> L<Plack|Plack>
+=head2 Mon Apr 11 19:31:56 2011: C<Module> L<parent|parent>
 
 =over 4
 
 =item *
 
-C<installed into: /tmp/pyw5ZeGWve/outputdir/lib/perl5>
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
 
 =item *
 
@@ -56,7 +56,183 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 0.9911>
+C<VERSION: 0.225>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:00 2011: C<Module> L<URI|URI>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.58>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:02 2011: C<Module> L<Devel::StackTrace|Devel::StackTrace>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.27>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:05 2011: C<Module> L<HTTP::Body|HTTP::Body>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.12>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:14 2011: C<Module> L<Filesys::Notify::Simple|Filesys::Notify::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.07>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:17 2011: C<Module> L<Class::Inspector|Class::Inspector>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.25>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:18 2011: C<Module> L<File::ShareDir|File::ShareDir>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.03>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:20 2011: C<Module> L<Devel::StackTrace::AsHTML|Devel::StackTrace::AsHTML>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.11>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Apr 11 19:32:38 2011: C<Module> L<Plack|Plack>
+
+=over 4
+
+=item *
+
+C<installed into: /tmp/LFnUxGoq1A/outputdir/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.9976>
 
 =item *
 

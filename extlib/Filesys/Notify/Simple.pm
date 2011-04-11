@@ -2,7 +2,7 @@ package Filesys::Notify::Simple;
 
 use strict;
 use 5.008_001;
-our $VERSION = '0.05';
+our $VERSION = '0.07';
 
 use Carp ();
 use Cwd;
@@ -143,17 +143,18 @@ sub _full_scan {
 
     my %map;
     for my $path (@path) {
+        my $fp = eval { Cwd::realpath($path) } or next;
         File::Find::finddepth({
             wanted => sub {
                 my $fullname = $File::Find::fullname || File::Spec->rel2abs($File::Find::name);
                 $map{Cwd::realpath($File::Find::dir)}{$fullname} = _stat($fullname);
             },
             follow_fast => 1,
+            follow_skip => 2,
             no_chdir => 1,
         }, @path);
 
         # remove root entry
-        my $fp = Cwd::realpath($path);
         delete $map{$fp}{$fp};
     }
 

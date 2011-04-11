@@ -45,8 +45,9 @@ sub log_line {
     my $block_handler = sub {
         my($block, $type) = @_;
         if ($type eq 'i') {
-            $block =~ s/-/_/;
-            return _safe($env->{"HTTP_" . uc($block)}) || "-";
+            $block =~ s/-/_/g;
+            my $val = _safe($env->{"HTTP_" . uc($block)});
+            return defined $val ? $val : "-";
         } elsif ($type eq 'o') {
             return scalar $h->get($block) || "-";
         } elsif ($type eq 't') {
@@ -56,6 +57,7 @@ sub log_line {
             return "-";
         }
     };
+
 
     my %char_handler = (
         '%' => sub { '%' },
@@ -68,7 +70,8 @@ sub log_line {
         s => sub { $status },
         b => sub { $opts->{content_length} || $h->get('Content-Length') || "-" },
         T => sub { $opts->{time} ? int($opts->{time}) : "-" },
-        D => sub { $opts->{time} || "-" },
+        D => sub { $opts->{time} ? $opts->{time} * 1000000 : "-" },
+        v => sub { $env->{SERVER_NAME} || '-' },
     );
 
     my $char_handler = sub {

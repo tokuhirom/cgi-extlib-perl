@@ -2,6 +2,7 @@ package Plack::App::URLMap;
 use strict;
 use warnings;
 use parent qw(Plack::Component);
+use constant DEBUG => $ENV{PLACK_URLMAP_DEBUG};
 
 use Carp ();
 
@@ -43,15 +44,21 @@ sub call {
 
     my($http_host, $server_name) = @{$env}{qw( HTTP_HOST SERVER_NAME )};
 
+    if ($http_host and my $port = $env->{SERVER_PORT}) {
+        $http_host =~ s/:$port$//;
+    }
+
     for my $map (@{ $self->{_sorted_mapping} }) {
         my($host, $location, $app) = @$map;
         my $path = $path_info; # copy
         no warnings 'uninitialized';
+        DEBUG && warn "Matching request (Host=$http_host Path=$path) and the map (Host=$host Path=$location)\n";
         next unless not defined $host     or
                     $http_host   eq $host or
                     $server_name eq $host;
-        next unless $location eq '' or $path =~ s!\Q$location\E!!;
-        next unless $path eq '' or $path =~ m!/!;
+        next unless $location eq '' or $path =~ s!^\Q$location\E!!;
+        next unless $path eq '' or $path =~ m!^/!;
+        DEBUG && warn "-> Matched!\n";
 
         my $orig_path_info   = $env->{PATH_INFO};
         my $orig_script_name = $env->{SCRIPT_NAME};
@@ -63,6 +70,8 @@ sub call {
             $env->{SCRIPT_NAME} = $orig_script_name;
         });
     }
+
+    DEBUG && warn "All matching failed.\n";
 
     return [404, [ 'Content-Type' => 'text/plain' ], [ "Not Found" ]];
 }
@@ -94,8 +103,9 @@ Plack::App::URLMap - Map multiple apps in different paths
 
 Plack::App::URLMap is a PSGI application that can dispatch multiple
 applications based on URL path and hostnames (a.k.a "virtual hosting")
-and takes care of rewriting C<SCRIPT_NAME> and C<PATH_INFO>. This
-module is inspired by Rack::URLMap.
+and takes care of rewriting C<SCRIPT_NAME> and C<PATH_INFO> (See
+L</"HOW THIS WORKS"> for details). This module is inspired by
+Rack::URLMap.
 
 =head1 METHODS
 
@@ -117,6 +127,10 @@ C</foo/> or C</foo/bar> but it B<won't> match with C</foox>.
 Mapping URL with host names is also possible, and in that case the URL
 mapping works like a virtual host.
 
+Mappings will nest.  If $app is already mapped to C</baz> it will
+match a request for C</foo/baz> but not C</foo>. See L</"HOW THIS
+WORKS"> for more details.
+
 =item mount
 
 Alias for C<map>.
@@ -131,6 +145,39 @@ dereference), so returning the object itself as a PSGI application
 should also work.
 
 =back
+
+=head1 DEBUGGING
+
+You can set the environment variable C<PLACK_URLMAP_DEBUG> to see how
+this application matches with the incoming request host names and
+paths.
+
+=head1 HOW THIS WORKS
+
+This application works by I<fixing> C<SCRIPT_NAME> and C<PATH_INFO>
+before dispatching the incoming request to the relocated
+applications.
+
+Say you have a Wiki application that takes C</index> and C</page/*>
+and makes a PSGI application C<$wiki_app> out of it, using one of
+supported web frameworks, you can put the whole application under
+C</wiki> by:
+
+  # MyWikiApp looks at PATH_INFO and handles /index and /page/*
+  my $wiki_app = sub { MyWikiApp->run(@_) };
+  
+  use Plack::App::URLMap;
+  my $app = Plack::App::URLMap->new;
+  $app->mount("/wiki" => $wiki_app);
+
+When a request comes in with C<PATH_INFO> set to C</wiki/page/foo>,
+the URLMap application C<$app> strips the C</wiki> part from
+C<PATH_INFO> and B<appends> that to C<SCRIPT_NAME>.
+
+That way, if the C<$app> is mounted under the root
+(i.e. C<SCRIPT_NAME> is C<"">) with standalone web servers like
+L<Starman>, C<SCRIPT_NAME> is now locally set to C</wiki> and
+C<PATH_INFO> is changed to C</page/foo> when C<$wiki_app> gets called.
 
 =head1 AUTHOR
 
